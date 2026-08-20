@@ -17,6 +17,19 @@
 
         const statLabels = ['str', 'dex', 'int', 'luk', 'watk', 'matk'];
 
+        // ---------------------------------------------------------------------
+        // ITEM DATABASE 
+        // Add your server's custom items here. The dropdown will automatically 
+        // populate, and selecting one will load its stats and slots.
+        // ---------------------------------------------------------------------
+        const itemDatabase = [
+            { id: 'Lilin', name: 'Lilin Ring', stats: { str: 3, dex: 3, int: 3, luk: 3, watk: 3, matk: 3 }, slots: 5 },
+            { id: 'UmbraH', name: 'Umbra Hat', stats: { str: 100, dex: 100, int: 100, luk: 100, watk: 40, matk: 40 }, slots: 12 },
+            { id: 'BlackBelt', name: 'Tinkerer Black Belt', stats: { str: 22, dex: 22, int: 22, luk: 22, watk: 0, matk: 0 }, slots: 3 },
+            { id: 'scg', name: 'Stormcaster Gloves', stats: { str: 0, dex: 0, int: 0, luk: 0, watk: 5, matk: 0 }, slots: 5 },
+            { id: 'cra_top', name: 'CRA Top (Eagle Eye)', stats: { str: 40, dex: 40, int: 40, luk: 40, watk: 2, matk: 2 }, slots: 7 }
+        ];
+
         function HeaderRow() {
             return (
                 <div className="flex items-center space-x-1 sm:space-x-2 mb-2">
@@ -70,12 +83,14 @@
         }
 
         function App() {
-            const initStats = () => ({ str: 0, dex: 0, int: 0, luk: 0, watk: 0, matk: 0 });
+            const initBaseStats = () => ({ str: 3, dex: 3, int: 3, luk: 3, watk: 3, matk: 3 });
+            const initZeroStats = () => ({ str: 0, dex: 0, int: 0, luk: 0, watk: 0, matk: 0 });
 
             // Application State
-            const [baseStats, setBaseStats] = useState(initStats());
+            const [baseStats, setBaseStats] = useState(initBaseStats());
+            const [selectedItem, setSelectedItem] = useState('custom');
             const [settings, setSettings] = useState({ 
-                slots: 0, 
+                slots: 5, 
                 type: 'cog', 
                 scrollAvg: 10, 
                 multiplier: 1.5,
@@ -90,6 +105,18 @@
             // Handlers
             const handleBaseChange = (stat, value) => {
                 setBaseStats(prev => ({ ...prev, [stat]: value === '' ? '' : Number(value) }));
+                setSelectedItem('custom'); // Switch to custom if manually edited
+            };
+
+            const handleDatabaseSelect = (e) => {
+                const itemId = e.target.value;
+                setSelectedItem(itemId);
+                
+                const item = itemDatabase.find(i => i.id === itemId);
+                if (item) {
+                    setBaseStats({ ...item.stats });
+                    setSettings(prev => ({ ...prev, slots: item.slots }));
+                }
             };
 
             const handleFoodTypeChange = (index, value) => {
@@ -101,7 +128,7 @@
             // Calculation Engine
             const results = useMemo(() => {
                 let res = [];
-                let carryOver = initStats(); 
+                let carryOver = initZeroStats(); 
 
                 // Clamp scroll average to valid ranges for the chosen scroll type
                 const scrollTypeMax = settings.type === 'cog' ? 5 : 20;
@@ -118,13 +145,13 @@
                     
                     const foodStats = rb.foodType === 'levelX' 
                         ? { str: 45, dex: 45, int: 45, luk: 45, watk: 0, matk: 0 }
-                        : initStats(); 
+                        : initZeroStats(); 
 
-                    let start = initStats();
-                    let scrolls = initStats();
-                    let preUpgrade = initStats();
-                    let end = initStats();
-                    let carry = initStats();
+                    let start = initZeroStats();
+                    let scrolls = initZeroStats();
+                    let preUpgrade = initZeroStats();
+                    let end = initZeroStats();
+                    let carry = initZeroStats();
                     let currentCarryOver = { ...carryOver };
 
                     statLabels.forEach(s => {
@@ -179,6 +206,21 @@
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div>
                                 <h3 className="text-lg font-bold mb-4 text-emerald-400 border-b border-slate-700 pb-2">Clean Base Item Stats</h3>
+                                
+                                {/* Database Load Dropdown */}
+                                <div className="flex items-center space-x-4 mb-6 bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                    <label className="w-36 text-sm font-bold text-slate-300">Load from Database:</label>
+                                    <select
+                                        className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none font-semibold text-emerald-300"
+                                        value={selectedItem}
+                                        onChange={handleDatabaseSelect}
+                                    >
+                                        {itemDatabase.map(item => (
+                                            <option key={item.id} value={item.id}>{item.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <HeaderRow />
                                 <StatRow label="Clean Base Stats" values={baseStats} onChange={handleBaseChange} />
                             </div>
@@ -225,10 +267,13 @@
                                         <label className="w-48 text-sm font-semibold text-slate-400">Scroll Slots per Rebirth</label>
                                         <input
                                             type="number"
-                                            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none text-emerald-300 font-bold"
                                             value={settings.slots === 0 ? '' : settings.slots}
                                             placeholder="Number of slots"
-                                            onChange={(e) => setSettings({...settings, slots: e.target.value === '' ? 0 : Number(e.target.value)})}
+                                            onChange={(e) => {
+                                                setSettings({...settings, slots: e.target.value === '' ? 0 : Number(e.target.value)});
+                                                setSelectedItem('custom'); // Editing slots manually triggers custom state
+                                            }}
                                             min="0"
                                         />
                                     </div>
